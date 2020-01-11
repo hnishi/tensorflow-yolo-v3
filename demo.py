@@ -53,9 +53,14 @@ def main(argv=None):
     )
 
     img = Image.open(FLAGS.input_img)
+    print("DEBUG1: img", img)
     img_resized = letter_box_image(img, FLAGS.size, FLAGS.size, 128)
+    # empty area に 128 が挿入される
+    #print("DEBUG1: img_resized:", img_resized)
     img_resized = img_resized.astype(np.float32)
+    print("DEBUG1: img_resized.shape:", img_resized.shape)
     classes = load_coco_names(FLAGS.class_names)
+    #print("DEBUG1: classes", classes)
 
     if FLAGS.frozen_model:
 
@@ -64,11 +69,16 @@ def main(argv=None):
         print("Loaded graph in {:.2f}s".format(time.time()-t0))
 
         boxes, inputs = get_boxes_and_inputs_pb(frozenGraph)
+        print("DEBUG1: boxes", boxes)
+        print("DEBUG1: inputs", inputs)
 
         with tf.Session(graph=frozenGraph, config=config) as sess:
             t0 = time.time()
             detected_boxes = sess.run(
                 boxes, feed_dict={inputs: [img_resized]})
+        print("DEBUG2: boxes", boxes)
+        print("DEBUG2: detected_boxes", detected_boxes)
+        print("DEBUG2: detected_boxes.shape", detected_boxes.shape)
 
     else:
         if FLAGS.tiny:
