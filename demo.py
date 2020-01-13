@@ -105,6 +105,7 @@ def main(argv=None):
                                          confidence_threshold=FLAGS.conf_threshold,
                                          iou_threshold=FLAGS.iou_threshold)
     print("Predictions found in {:.2f}s".format(time.time() - t0))
+    print("DEBUG3: filtered_boxes", filtered_boxes)
 
     draw_boxes(filtered_boxes, img, classes, (FLAGS.size, FLAGS.size), True)
 

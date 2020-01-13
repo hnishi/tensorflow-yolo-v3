@@ -241,6 +241,8 @@ def draw_boxes(boxes, img, cls_names, detection_size, is_letter_box_image):
             box = convert_to_original_size(box, np.array(detection_size),
                                            np.array(img.size),
                                            is_letter_box_image)
+            print("DEBUG4: box", box)
+            print("DEBUG4: img.size", img.size)
             draw.rectangle(box, outline=color)
             draw.text(box[:2], '{} {:.2f}%'.format(
                 cls_names[cls], score * 100), fill=color)
