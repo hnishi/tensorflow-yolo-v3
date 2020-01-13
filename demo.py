@@ -56,7 +56,8 @@ def main(argv=None):
     print("DEBUG1: img", img)
     img_resized = letter_box_image(img, FLAGS.size, FLAGS.size, 128)
     # empty area に 128 が挿入される
-    #print("DEBUG1: img_resized:", img_resized)
+    print("DEBUG1: img_resized:", img_resized.flatten())
+    np.savetxt('img_resized.txt', img_resized.flatten())
     img_resized = img_resized.astype(np.float32)
     print("DEBUG1: img_resized.shape:", img_resized.shape)
     classes = load_coco_names(FLAGS.class_names)
