@@ -78,6 +78,7 @@ def main(argv=None):
             detected_boxes = sess.run(
                 boxes, feed_dict={inputs: [img_resized]})
         print("DEBUG2: boxes", boxes)
+        np.savetxt('detected_boxes.txt', detected_boxes.flatten())
         print("DEBUG2: detected_boxes", detected_boxes)
         print("DEBUG2: detected_boxes.shape", detected_boxes.shape)
 

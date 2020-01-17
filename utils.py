@@ -166,7 +166,7 @@ def _iou(box1, box2):
     b2_area = (b2_x1 - b2_x0) * (b2_y1 - b2_y0)
 
     # we add small epsilon of 1e-05 to avoid division by 0
-    iou = int_area / (b1_area + b2_area - int_area + 1e-05)
+    iou = int_area / (b1_area + b2_area - int_area + 1e-05) # iou の値が大きいほど、box1, box2 の重なりが大きい
     return iou
 
 
@@ -181,30 +181,43 @@ def non_max_suppression(predictions_with_boxes, confidence_threshold, iou_thresh
     """
     conf_mask = np.expand_dims(
         (predictions_with_boxes[:, :, 4] > confidence_threshold), -1)
+    print("nms DEBUG1: conf_mask.shape", conf_mask.shape) # (1, 10647, 1) -> {TRUE,FALSE} x10647
     predictions = predictions_with_boxes * conf_mask
+    print("nms DEBUG1: predictions.shape", predictions.shape) # (1, 10647, 85) TRUE 以外 0
 
     result = {}
     for i, image_pred in enumerate(predictions):
         shape = image_pred.shape
+        print("nms DEBUG2: image_pred.shape", image_pred.shape) # (10647, 85) TRUE 以外 0
         # https://github.com/mystic123/tensorflow-yolo-v3/issues/70#issuecomment-516476947
         #non_zero_idxs = np.nonzero(image_pred)
         #image_pred = image_pred[non_zero_idxs]
         temp = image_pred
         sum_t = np.sum(temp, axis=1)
+        print("nms DEBUG2: sum_t", sum_t) # sum of axis=1 --> to judge TRUE or FALSE
         non_zero_idx = sum_t != 0
-        image_pred = image_pred[non_zero_idx, :]
+        print("nms DEBUG2: non_zero_idx", non_zero_idx) # 1D-list of TRUE or FALSE
+        image_pred = image_pred[non_zero_idx, :] # extract TRUE elements
+        print("nms DEBUG2: image_pred.shape", image_pred.shape) # 1D-list of TRUE or FALSE
         image_pred = image_pred.reshape(-1, shape[-1])
+        print("nms DEBUG2: image_pred", image_pred) # 1D-list of TRUE or FALSE
+        print("nms DEBUG2: image_pred.shape", image_pred.shape) # 1D-list of TRUE or FALSE
 
         bbox_attrs = image_pred[:, :5]
         classes = image_pred[:, 5:]
         classes = np.argmax(classes, axis=-1)
+        print("nms DEBUG2: classes", classes) # indexes of highest score
 
         unique_classes = list(set(classes.reshape(-1)))
+        print("nms DEBUG2: unique_classes", unique_classes) # unique class names
 
         for cls in unique_classes:
-            cls_mask = classes == cls
-            cls_boxes = bbox_attrs[np.nonzero(cls_mask)]
+            cls_mask = classes == cls # list of TRUE or FALSE
+            cls_boxes = bbox_attrs[np.nonzero(cls_mask)] # extract bbox attrs for cls
+            print("nms DEBUG3: cls, cls_boxes", cls, cls_boxes) # bbox attr
             cls_boxes = cls_boxes[cls_boxes[:, -1].argsort()[::-1]]
+            print("nms DEBUG3: index of cls_boxes", cls_boxes[:, -1].argsort()[::-1]) # sort by confidence
+            print("nms DEBUG3: cls, sorted cls_boxes", cls, cls_boxes) #
             cls_scores = cls_boxes[:, -1]
             cls_boxes = cls_boxes[:, :-1]
 
@@ -216,11 +229,16 @@ def non_max_suppression(predictions_with_boxes, confidence_threshold, iou_thresh
                 result[cls].append((box, score))
                 cls_boxes = cls_boxes[1:]
                 cls_scores = cls_scores[1:]
-                ious = np.array([_iou(box, x) for x in cls_boxes])
-                iou_mask = ious < iou_threshold
+                ious = np.array([_iou(box, x) for x in cls_boxes]) # _iou -> どれぐらい2つのboxがオーバーラップしているかの指標（大きいほどoverlap）
+                print("nms DEBUG4: ious", ious)
+                iou_mask = ious < iou_threshold # default=0.4
                 cls_boxes = cls_boxes[np.nonzero(iou_mask)]
                 cls_scores = cls_scores[np.nonzero(iou_mask)]
+                print("nms DEBUG4: cls_scores", cls_scores)
 
+    # あれ？ resultにiouで選別したboxの情報が入ってない？
+    # なんか、各クラスでconfidence最大になるboxしかresultに入ってない気がする
+    # ただ、dog.jpgでは、いずれもcls_scores=[]で空になってるから問題ないけども
     return result
 
 
@@ -251,6 +269,7 @@ def draw_boxes(boxes, img, cls_names, detection_size, is_letter_box_image):
 def convert_to_original_size(box, size, original_size, is_letter_box_image):
     if is_letter_box_image:
         box = box.reshape(2, 2)
+        print("conv2orig DEBUG1: box, size, original_size, is_letter_box_image =", box, size, original_size, is_letter_box_image)
         box[0, :] = letter_box_pos_to_original_pos(box[0, :], size, original_size)
         box[1, :] = letter_box_pos_to_original_pos(box[1, :], size, original_size)
     else:
@@ -301,7 +320,9 @@ def letter_box_pos_to_original_pos(letter_pos, current_size, ori_image_size)-> n
     current_size = np.asarray(current_size, dtype=np.float)
     ori_image_size = np.asarray(ori_image_size, dtype=np.float)
     final_ratio = min(current_size[0]/ori_image_size[0], current_size[1]/ori_image_size[1])
+    print("pad DEBUG: current_size, final_ratio, ori_image_size = ", current_size, final_ratio, ori_image_size)
     pad = 0.5 * (current_size - final_ratio * ori_image_size)
+    print("pad DEBUG: pad = ", pad)
     pad = pad.astype(np.int32)
     to_return_pos = (letter_pos - pad) / final_ratio
     return to_return_pos
